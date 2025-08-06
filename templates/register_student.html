@@ -1,0 +1,547 @@
+{% extends "base.html" %}
+
+{% block title %}Register Student - Attendance Management System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2><i class="fas fa-user-plus me-2"></i>Register New Student</h2>
+                <p class="text-muted">Add a new student to the attendance system</p>
+            </div>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
+        </div>
+
+        <!-- Registration Form -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-user-edit me-2"></i>Student Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('register_student') }}" id="studentForm">
+                    <div class="row">
+                        <!-- Student ID -->
+                        <div class="col-md-6 mb-3">
+                            <label for="student_id" class="form-label">
+                                <i class="fas fa-id-card me-1"></i>Student ID <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="student_id" 
+                                   name="student_id" 
+                                   placeholder="e.g., STU001, 2023001"
+                                   required 
+                                   autofocus
+                                   onblur="checkStudentIdExists()">
+                            <div class="form-text">Unique identifier for the student</div>
+                            <div id="student_id_feedback" class="invalid-feedback"></div>
+                        </div>
+
+                        <!-- Full Name -->
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">
+                                <i class="fas fa-user me-1"></i>Full Name <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="name" 
+                                   name="name" 
+                                   placeholder="Enter student's full name"
+                                   required>
+                            <div class="form-text">Student's complete name</div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- Email -->
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">
+                                <i class="fas fa-envelope me-1"></i>Email Address
+                            </label>
+                            <input type="email" 
+                                   class="form-control" 
+                                   id="email" 
+                                   name="email" 
+                                   placeholder="student@example.com">
+                            <div class="form-text">Optional contact email</div>
+                        </div>
+
+                        <!-- Phone -->
+                        <div class="col-md-6 mb-3">
+                            <label for="phone" class="form-label">
+                                <i class="fas fa-phone me-1"></i>Phone Number
+                            </label>
+                            <input type="tel" 
+                                   class="form-control" 
+                                   id="phone" 
+                                   name="phone" 
+                                   placeholder="+1 (555) 123-4567">
+                            <div class="form-text">Optional contact number</div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- Department -->
+                        <div class="col-md-6 mb-3">
+                            <label for="department" class="form-label">
+                                <i class="fas fa-building me-1"></i>Department
+                            </label>
+                            <select class="form-select" id="department" name="department">
+                                <option value="">Select Department</option>
+                                <option value="Computer Science">Computer Science</option>
+                                <option value="Information Technology">Information Technology</option>
+                                <option value="Electronics">Electronics</option>
+                                <option value="Mechanical">Mechanical</option>
+                                <option value="Civil">Civil</option>
+                                <option value="Electrical">Electrical</option>
+                                <option value="Chemical">Chemical</option>
+                                <option value="Business">Business</option>
+                                <option value="Arts">Arts</option>
+                                <option value="Science">Science</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <div class="form-text">Student's department or major</div>
+                        </div>
+
+                        <!-- Year/Level -->
+                        <div class="col-md-6 mb-3">
+                            <label for="year" class="form-label">
+                                <i class="fas fa-calendar-alt me-1"></i>Academic Year
+                            </label>
+                            <select class="form-select" id="year" name="year">
+                                <option value="">Select Year</option>
+                                <option value="1st Year">1st Year</option>
+                                <option value="2nd Year">2nd Year</option>
+                                <option value="3rd Year">3rd Year</option>
+                                <option value="4th Year">4th Year</option>
+                                <option value="Graduate">Graduate</option>
+                                <option value="Postgraduate">Postgraduate</option>
+                            </select>
+                            <div class="form-text">Current academic year/level</div>
+                        </div>
+                    </div>
+
+                    <!-- Additional Notes -->
+                    <div class="mb-4">
+                        <label for="notes" class="form-label">
+                            <i class="fas fa-sticky-note me-1"></i>Additional Notes
+                        </label>
+                        <textarea class="form-control" 
+                                  id="notes" 
+                                  name="notes" 
+                                  rows="3" 
+                                  placeholder="Any additional information about the student..."></textarea>
+                        <div class="form-text">Optional notes or special considerations</div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <button type="button" class="btn btn-outline-secondary" onclick="clearForm()">
+                                <i class="fas fa-undo me-2"></i>Clear Form
+                            </button>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-outline-primary me-2" onclick="previewStudent()">
+                                <i class="fas fa-eye me-2"></i>Preview
+                            </button>
+                            <button type="submit" class="btn btn-success" id="submitBtn">
+                                <i class="fas fa-user-plus me-2"></i>Register Student
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Recent Students -->
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>Recently Added Students
+                </h5>
+                <span class="badge bg-primary">{{ recent_students|length }}</span>
+            </div>
+            <div class="card-body">
+                {% if recent_students %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Student ID</th>
+                                <th>Name</th>
+                                <th>Department</th>
+                                <th>Added</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in recent_students %}
+                            <tr>
+                                <td><span class="badge bg-secondary">{{ student.student_id }}</span></td>
+                                <td>{{ student.name }}</td>
+                                <td>{{ student.department or 'N/A' }}</td>
+                                <td>
+                                    <small class="text-muted">
+                                        {{ student.created_at.strftime('%Y-%m-%d %H:%M') if student.created_at else 'Unknown' }}
+                                    </small>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" 
+                                            onclick="viewStudent('{{ student.student_id }}')"
+                                            title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <a href="{{ url_for('manual_attendance') }}?student_id={{ student.student_id }}" 
+                                       class="btn btn-sm btn-outline-success"
+                                       title="Mark Attendance">
+                                        <i class="fas fa-check"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-3">
+                    <i class="fas fa-users fa-2x mb-2"></i>
+                    <p>No students registered yet. Register your first student above!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats Sidebar -->
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>Registration Statistics
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>Total Students</span>
+                    <span class="badge bg-primary" id="totalStudentsCount">{{ stats.total_students }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>This Month</span>
+                    <span class="badge bg-success" id="thisMonthCount">{{ stats.this_month }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>Today</span>
+                    <span class="badge bg-info" id="todayCount">{{ stats.today }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-bolt me-2"></i>Quick Actions
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('manual_attendance') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-check me-2"></i>Mark Attendance
+                    </a>
+                    <a href="{{ url_for('reports') }}" class="btn btn-outline-info">
+                        <i class="fas fa-chart-bar me-2"></i>View Reports
+                    </a>
+                    <button class="btn btn-outline-secondary" onclick="downloadTemplate()">
+                        <i class="fas fa-download me-2"></i>Download CSV Template
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Help Card -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-question-circle me-2"></i>Need Help?
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled small">
+                    <li class="mb-2">
+                        <i class="fas fa-info-circle text-primary me-2"></i>
+                        Student ID must be unique
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-info-circle text-primary me-2"></i>
+                        Only name and ID are required
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-info-circle text-primary me-2"></i>
+                        Use clear, consistent naming
+                    </li>
+                    <li>
+                        <i class="fas fa-info-circle text-primary me-2"></i>
+                        Check for duplicates before submitting
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Student Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-user me-2"></i>Student Preview
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="previewContent">
+                <!-- Preview content will be inserted here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Edit</button>
+                <button type="button" class="btn btn-primary" onclick="confirmRegistration()">
+                    <i class="fas fa-check me-2"></i>Confirm & Register
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Check if student ID already exists
+function checkStudentIdExists() {
+    const studentId = document.getElementById('student_id').value.trim();
+    const feedback = document.getElementById('student_id_feedback');
+    const input = document.getElementById('student_id');
+    
+    if (!studentId) return;
+    
+    fetch(`/api/check_student_exists?student_id=${encodeURIComponent(studentId)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.exists) {
+                input.classList.add('is-invalid');
+                feedback.textContent = 'This Student ID already exists. Please use a different ID.';
+                feedback.style.display = 'block';
+            } else {
+                input.classList.remove('is-invalid');
+                input.classList.add('is-valid');
+                feedback.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error checking student ID:', error);
+        });
+}
+
+// Clear form
+function clearForm() {
+    if (confirm('Are you sure you want to clear all form data?')) {
+        document.getElementById('studentForm').reset();
+        // Remove validation classes
+        document.querySelectorAll('.is-valid, .is-invalid').forEach(el => {
+            el.classList.remove('is-valid', 'is-invalid');
+        });
+    }
+}
+
+// Preview student data
+function previewStudent() {
+    const formData = new FormData(document.getElementById('studentForm'));
+    const studentData = Object.fromEntries(formData.entries());
+    
+    const previewHtml = `
+        <div class="row">
+            <div class="col-6"><strong>Student ID:</strong></div>
+            <div class="col-6">${studentData.student_id || 'Not provided'}</div>
+        </div>
+        <hr>
+        <div class="row">
+            <div class="col-6"><strong>Name:</strong></div>
+            <div class="col-6">${studentData.name || 'Not provided'}</div>
+        </div>
+        <hr>
+        <div class="row">
+            <div class="col-6"><strong>Email:</strong></div>
+            <div class="col-6">${studentData.email || 'Not provided'}</div>
+        </div>
+        <hr>
+        <div class="row">
+            <div class="col-6"><strong>Phone:</strong></div>
+            <div class="col-6">${studentData.phone || 'Not provided'}</div>
+        </div>
+        <hr>
+        <div class="row">
+            <div class="col-6"><strong>Department:</strong></div>
+            <div class="col-6">${studentData.department || 'Not provided'}</div>
+        </div>
+        <hr>
+        <div class="row">
+            <div class="col-6"><strong>Year:</strong></div>
+            <div class="col-6">${studentData.year || 'Not provided'}</div>
+        </div>
+        ${studentData.notes ? `
+        <hr>
+        <div class="row">
+            <div class="col-12"><strong>Notes:</strong></div>
+            <div class="col-12">${studentData.notes}</div>
+        </div>
+        ` : ''}
+    `;
+    
+    document.getElementById('previewContent').innerHTML = previewHtml;
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    modal.show();
+}
+
+// Confirm registration from preview
+function confirmRegistration() {
+    // Close modal and submit form
+    bootstrap.Modal.getInstance(document.getElementById('previewModal')).hide();
+    document.getElementById('studentForm').submit();
+}
+
+// View student details
+function viewStudent(studentId) {
+    fetch(`/api/student_details?student_id=${encodeURIComponent(studentId)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const student = data.student;
+                const detailsHtml = `
+                    <div class="row">
+                        <div class="col-6"><strong>Student ID:</strong></div>
+                        <div class="col-6">${student.student_id}</div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-6"><strong>Name:</strong></div>
+                        <div class="col-6">${student.name}</div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-6"><strong>Email:</strong></div>
+                        <div class="col-6">${student.email || 'Not provided'}</div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-6"><strong>Phone:</strong></div>
+                        <div class="col-6">${student.phone || 'Not provided'}</div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-6"><strong>Department:</strong></div>
+                        <div class="col-6">${student.department || 'Not provided'}</div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-6"><strong>Year:</strong></div>
+                        <div class="col-6">${student.year || 'Not provided'}</div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-6"><strong>Status:</strong></div>
+                        <div class="col-6">
+                            <span class="badge bg-${student.is_active ? 'success' : 'danger'}">
+                                ${student.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-6"><strong>Registered:</strong></div>
+                        <div class="col-6">${new Date(student.created_at).toLocaleDateString()}</div>
+                    </div>
+                `;
+                
+                document.getElementById('previewContent').innerHTML = detailsHtml;
+                document.querySelector('#previewModal .modal-title').innerHTML = '<i class="fas fa-user me-2"></i>Student Details';
+                document.querySelector('#previewModal .btn-primary').style.display = 'none';
+                
+                const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+                modal.show();
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching student details:', error);
+        });
+}
+
+// Download CSV template
+function downloadTemplate() {
+    const csvContent = "student_id,name,email,phone,department,year,notes\nSTU001,John Doe,john@example.com,+1234567890,Computer Science,1st Year,Sample student entry";
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'student_registration_template.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+// Form submission handling
+document.getElementById('studentForm').addEventListener('submit', function(e) {
+    const submitBtn = document.getElementById('submitBtn');
+    const originalText = submitBtn.innerHTML;
+    
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Registering...';
+    submitBtn.disabled = true;
+    
+    // Re-enable button after 3 seconds in case of error
+    setTimeout(() => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }, 3000);
+});
+
+// Auto-format phone number
+document.getElementById('phone').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length >= 6) {
+        value = value.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3');
+    } else if (value.length >= 3) {
+        value = value.replace(/(\d{3})(\d{0,3})/, '($1) $2');
+    }
+    e.target.value = value;
+});
+
+// Real-time validation
+document.getElementById('name').addEventListener('input', function(e) {
+    const value = e.target.value.trim();
+    if (value.length >= 2) {
+        e.target.classList.add('is-valid');
+        e.target.classList.remove('is-invalid');
+    } else if (value.length > 0) {
+        e.target.classList.add('is-invalid');
+        e.target.classList.remove('is-valid');
+    } else {
+        e.target.classList.remove('is-valid', 'is-invalid');
+    }
+});
+
+// Auto-generate student ID suggestion
+document.getElementById('name').addEventListener('blur', function(e) {
+    const studentIdInput = document.getElementById('student_id');
+    if (!studentIdInput.value.trim() && e.target.value.trim()) {
+        const nameParts = e.target.value.trim().split(' ');
+        const currentYear = new Date().getFullYear();
+        const initials = nameParts.map(part => part.charAt(0).toUpperCase()).join('');
+        const suggestion = `${currentYear}${initials}${Math.floor(Math.random() * 100).toString().padStart(2, '0')}`;
+        studentIdInput.placeholder = `Suggestion: ${suggestion}`;
+    }
+});
+</script>
+{% endblock %}

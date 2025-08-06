@@ -1,0 +1,791 @@
+{% extends "base.html" %} {% block title %}Manual Attendance - Attendance
+Management System{% endblock %} {% block content %}
+<div class="row">
+  <div class="col-12">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h2><i class="fas fa-clipboard-check me-2"></i>Manual Attendance</h2>
+        <p class="text-muted">Mark attendance for students manually</p>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-primary" onclick="markAllPresent()">
+          <i class="fas fa-check-double me-2"></i>Mark All Present
+        </button>
+        <button class="btn btn-outline-secondary" onclick="exportAttendance()">
+          <i class="fas fa-download me-2"></i>Export
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Date Selection and Statistics -->
+<div class="row mb-4">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+          <div class="col-md-4">
+            <label for="attendance_date" class="form-label">Date</label>
+            <input
+              type="date"
+              class="form-control"
+              id="attendance_date"
+              name="date"
+              value="{{ selected_date }}"
+              max="{{ today_date }}"
+            />
+          </div>
+          <div class="col-md-6">
+            <label for="search_student" class="form-label"
+              >Search Student</label
+            >
+            <input
+              type="text"
+              class="form-control"
+              id="search_student"
+              placeholder="Search by name or ID..."
+              onkeyup="filterStudents()"
+            />
+          </div>
+          <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">
+              <i class="fas fa-search me-1"></i>Filter
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card bg-primary text-white">
+      <div class="card-body text-center">
+        <h3 class="mb-0" id="attendanceCount">{{ marked_count }}</h3>
+        <p class="mb-0">of {{ total_students }} students marked</p>
+        <div class="progress mt-2" style="height: 5px">
+          <div
+            class="progress-bar bg-light"
+            style="width: {{ (marked_count / total_students * 100) if total_students > 0 else 0 }}%"
+          ></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Actions -->
+<div class="row mb-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <div class="row align-items-center">
+          <div class="col-md-6">
+            <div class="form-check">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="selectAll"
+                onchange="toggleSelectAll()"
+              />
+              <label class="form-check-label fw-bold" for="selectAll">
+                Select All Students
+              </label>
+            </div>
+          </div>
+          <div class="col-md-6 text-end">
+            <div class="btn-group" role="group">
+              <button
+                type="button"
+                class="btn btn-success btn-sm"
+                onclick="markSelectedAs('present')"
+              >
+                <i class="fas fa-check me-1"></i>Mark Present
+              </button>
+              <button
+                type="button"
+                class="btn btn-danger btn-sm"
+                onclick="markSelectedAs('absent')"
+              >
+                <i class="fas fa-times me-1"></i>Mark Absent
+              </button>
+              <button
+                type="button"
+                class="btn btn-warning btn-sm"
+                onclick="markSelectedAs('late')"
+              >
+                <i class="fas fa-clock me-1"></i>Mark Late
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Students List -->
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">
+          <i class="fas fa-users me-2"></i>Students List
+          <span class="badge bg-secondary ms-2" id="visibleCount"
+            >{{ students|length }}</span
+          >
+        </h5>
+      </div>
+      <div class="card-body">
+        {% if students %}
+        <div class="table-responsive">
+          <table class="table table-hover" id="studentsTable">
+            <thead>
+              <tr>
+                <th width="50">
+                  <input
+                    type="checkbox"
+                    id="headerCheckbox"
+                    onchange="toggleSelectAll()"
+                  />
+                </th>
+                <th>Student ID</th>
+                <th>Name</th>
+                <th>Department</th>
+                <th>Current Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="studentsTableBody">
+              {% for student in students %}
+              <tr
+                class="student-row"
+                data-student-id="{{ student.student_id }}"
+                data-student-name="{{ student.name.lower() }}"
+              >
+                <td>
+                  <input
+                    type="checkbox"
+                    class="student-checkbox"
+                    value="{{ student.student_id }}"
+                  />
+                </td>
+                <td>
+                  <span class="badge bg-secondary"
+                    >{{ student.student_id }}</span
+                  >
+                </td>
+                <td>
+                  <div class="d-flex align-items-center">
+                    <div class="avatar-circle me-2">
+                      {{ student.name[0].upper() }}
+                    </div>
+                    <div>
+                      <div class="fw-bold">{{ student.name }}</div>
+                      {% if student.email %}
+                      <small class="text-muted">{{ student.email }}</small>
+                      {% endif %}
+                    </div>
+                  </div>
+                </td>
+                <td>{{ student.department or 'N/A' }}</td>
+                <td>
+                  <span
+                    class="attendance-status"
+                    id="status-{{ student.student_id }}"
+                  >
+                    {% if student.attendance_status %}
+                    <span
+                      class="badge bg-{{ 'success' if student.attendance_status == 'present' else 'danger' if student.attendance_status == 'absent' else 'warning' }}"
+                    >
+                      {{ student.attendance_status|title }}
+                    </span>
+                    {% else %}
+                    <span class="badge bg-secondary">Not Marked</span>
+                    {% endif %}
+                  </span>
+                </td>
+                <td>
+                  <div class="btn-group" role="group">
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-success"
+                      onclick="markAttendance('{{ student.student_id }}', 'present')"
+                      title="Mark Present"
+                    >
+                      <i class="fas fa-check"></i>
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-danger"
+                      onclick="markAttendance('{{ student.student_id }}', 'absent')"
+                      title="Mark Absent"
+                    >
+                      <i class="fas fa-times"></i>
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-warning"
+                      onclick="markAttendance('{{ student.student_id }}', 'late')"
+                      title="Mark Late"
+                    >
+                      <i class="fas fa-clock"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5">
+          <i class="fas fa-user-plus fa-3x mb-3"></i>
+          <h4>No Students Found</h4>
+          <p>No students are registered in the system.</p>
+          <a href="{{ url_for('register_student') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Register First Student
+          </a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Save Attendance Modal -->
+<div class="modal fade" id="saveConfirmModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Save Attendance</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <p>
+          Are you sure you want to save the attendance for
+          <strong id="saveDate">{{ selected_date }}</strong>?
+        </p>
+        <div class="row text-center">
+          <div class="col-4">
+            <div class="p-2 bg-success bg-opacity-10 rounded">
+              <div class="fw-bold text-success" id="modalPresentCount">0</div>
+              <small class="text-muted">Present</small>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="p-2 bg-danger bg-opacity-10 rounded">
+              <div class="fw-bold text-danger" id="modalAbsentCount">0</div>
+              <small class="text-muted">Absent</small>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="p-2 bg-warning bg-opacity-10 rounded">
+              <div class="fw-bold text-warning" id="modalLateCount">0</div>
+              <small class="text-muted">Late</small>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          onclick="saveAllAttendance()"
+        >
+          <i class="fas fa-save me-2"></i>Save Attendance
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Floating Action Button -->
+<div class="fab-container">
+  <button
+    class="btn btn-primary fab-button"
+    onclick="showSaveModal()"
+    title="Save All Attendance"
+  >
+    <i class="fas fa-save"></i>
+  </button>
+</div>
+{% endblock %} {% block extra_css %}
+<style>
+  .avatar-circle {
+    width: 35px;
+    height: 35px;
+    background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 14px;
+  }
+
+  .fab-container {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 1000;
+  }
+
+  .fab-button {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: none;
+    font-size: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .fab-button:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  }
+
+  .student-row.filtered-out {
+    display: none;
+  }
+
+  .table th {
+    position: sticky;
+    top: 0;
+    background-color: #f8f9fa;
+    z-index: 10;
+  }
+</style>
+{% endblock %} {% block extra_js %}
+<script>
+  let attendanceData = {};
+
+  // Mark individual attendance
+  function markAttendance(studentId, status) {
+    // Store locally first
+    attendanceData[studentId] = status;
+
+    // Update UI immediately
+    const statusElement = document.getElementById(`status-${studentId}`);
+    const badgeClass =
+      status === "present"
+        ? "success"
+        : status === "absent"
+        ? "danger"
+        : "warning";
+    statusElement.innerHTML = `<span class="badge bg-${badgeClass}">${
+      status.charAt(0).toUpperCase() + status.slice(1)
+    }</span>`;
+
+    // Update counter
+    updateAttendanceCounter();
+
+    // Send to server (with error handling)
+    fetch("/api/mark_attendance", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        student_id: studentId,
+        status: status,
+      }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          showToast(
+            `${data.student_name || studentId} marked as ${status}`,
+            "success"
+          );
+        } else {
+          showToast(`Error: ${data.message}`, "error");
+          // Revert UI on error
+          statusElement.innerHTML =
+            '<span class="badge bg-secondary">Not Marked</span>';
+          delete attendanceData[studentId];
+          updateAttendanceCounter();
+        }
+      })
+      .catch((error) => {
+        console.error("Error marking attendance:", error);
+        showToast(
+          `Network error marking ${studentId}. Changes saved locally.`,
+          "warning"
+        );
+        // Keep local changes but show warning
+      });
+  }
+
+  // Mark selected students
+  function markSelectedAs(status) {
+    const selectedCheckboxes = document.querySelectorAll(
+      ".student-checkbox:checked"
+    );
+    let count = 0;
+
+    selectedCheckboxes.forEach((checkbox) => {
+      const studentId = checkbox.value;
+      markAttendance(studentId, status);
+      count++;
+    });
+
+    if (count > 0) {
+      showToast(`${count} students marked as ${status}`, "success");
+    } else {
+      showToast("No students selected", "warning");
+    }
+  }
+
+  // Mark all present
+  function markAllPresent() {
+    const studentRows = document.querySelectorAll(
+      ".student-row:not(.filtered-out)"
+    );
+    let count = 0;
+
+    studentRows.forEach((row) => {
+      const studentId = row.dataset.studentId;
+      markAttendance(studentId, "present");
+      count++;
+    });
+
+    showToast(`All ${count} visible students marked as present`, "success");
+  }
+
+  // Toggle select all
+  function toggleSelectAll() {
+    const selectAllCheckbox = document.getElementById("selectAll");
+    const headerCheckbox = document.getElementById("headerCheckbox");
+    const studentCheckboxes = document.querySelectorAll(".student-checkbox");
+
+    // Sync header checkbox with select all
+    headerCheckbox.checked = selectAllCheckbox.checked;
+
+    studentCheckboxes.forEach((checkbox) => {
+      const row = checkbox.closest(".student-row");
+      if (!row.classList.contains("filtered-out")) {
+        checkbox.checked = selectAllCheckbox.checked;
+      }
+    });
+  }
+
+  // Filter students
+  function filterStudents() {
+    const searchTerm = document
+      .getElementById("search_student")
+      .value.toLowerCase();
+    const studentRows = document.querySelectorAll(".student-row");
+    let visibleCount = 0;
+
+    studentRows.forEach((row) => {
+      const studentName = row.dataset.studentName;
+      const studentId = row.dataset.studentId.toLowerCase();
+
+      if (studentName.includes(searchTerm) || studentId.includes(searchTerm)) {
+        row.classList.remove("filtered-out");
+        visibleCount++;
+      } else {
+        row.classList.add("filtered-out");
+        // Uncheck filtered out students
+        const checkbox = row.querySelector(".student-checkbox");
+        checkbox.checked = false;
+      }
+    });
+
+    document.getElementById("visibleCount").textContent = visibleCount;
+  }
+
+  // Update attendance counter
+  function updateAttendanceCounter() {
+    const totalStudents = document.querySelectorAll(".student-row").length;
+    const markedCount = Object.keys(attendanceData).length;
+
+    document.getElementById("attendanceCount").textContent = markedCount;
+
+    // Update progress bar
+    const progressBar = document.querySelector(".progress-bar");
+    const percentage =
+      totalStudents > 0 ? (markedCount / totalStudents) * 100 : 0;
+    progressBar.style.width = percentage + "%";
+  }
+
+  // Show save modal
+  function showSaveModal() {
+    const presentCount = Object.values(attendanceData).filter(
+      (status) => status === "present"
+    ).length;
+    const absentCount = Object.values(attendanceData).filter(
+      (status) => status === "absent"
+    ).length;
+    const lateCount = Object.values(attendanceData).filter(
+      (status) => status === "late"
+    ).length;
+
+    document.getElementById("modalPresentCount").textContent = presentCount;
+    document.getElementById("modalAbsentCount").textContent = absentCount;
+    document.getElementById("modalLateCount").textContent = lateCount;
+
+    const modal = new bootstrap.Modal(
+      document.getElementById("saveConfirmModal")
+    );
+    modal.show();
+  }
+
+  // Save all attendance
+  function saveAllAttendance() {
+    const attendanceDate = document.getElementById("attendance_date").value;
+
+    if (Object.keys(attendanceData).length === 0) {
+      showToast("No attendance data to save", "warning");
+      return;
+    }
+
+    // Show loading
+    const saveButton = document.querySelector("#saveConfirmModal .btn-primary");
+    const originalText = saveButton.innerHTML;
+    saveButton.innerHTML =
+      '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
+    saveButton.disabled = true;
+
+    // Prepare bulk attendance data
+    const bulkData = {
+      student_ids: Object.keys(attendanceData).filter(
+        (id) => attendanceData[id] === "present"
+      ),
+      date: attendanceDate,
+      attendance_records: attendanceData,
+    };
+
+    fetch("/api/bulk_attendance", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(bulkData),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          showToast(
+            `Attendance saved! ${data.success_count} students marked successfully.`,
+            "success"
+          );
+          if (data.error_count > 0) {
+            showToast(
+              `${data.error_count} errors occurred. Check details.`,
+              "warning"
+            );
+            console.log("Save details:", data.details);
+          }
+          // Clear attendance data
+          attendanceData = {};
+          // Close modal
+          bootstrap.Modal.getInstance(
+            document.getElementById("saveConfirmModal")
+          ).hide();
+          // Refresh page after a short delay
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } else {
+          throw new Error(data.message || "Failed to save attendance");
+        }
+      })
+      .catch((error) => {
+        console.error("Error saving attendance:", error);
+        showToast("Error saving attendance: " + error.message, "error");
+      })
+      .finally(() => {
+        saveButton.innerHTML = originalText;
+        saveButton.disabled = false;
+      });
+  }
+
+  // Export attendance
+  function exportAttendance() {
+    const attendanceDate = document.getElementById("attendance_date").value;
+    window.open(`/api/export_today_attendance`, "_blank");
+  }
+
+  // Toast notification function
+  function showToast(message, type) {
+    const toastHtml = `
+        <div class="toast align-items-center text-white bg-${
+          type === "success"
+            ? "success"
+            : type === "warning"
+            ? "warning"
+            : "danger"
+        } border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="fas fa-${
+                      type === "success"
+                        ? "check"
+                        : type === "warning"
+                        ? "exclamation-triangle"
+                        : "times"
+                    } me-2"></i>
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    `;
+
+    let toastContainer = document.querySelector(".toast-container");
+    if (!toastContainer) {
+      toastContainer = document.createElement("div");
+      toastContainer.className =
+        "toast-container position-fixed top-0 end-0 p-3";
+      document.body.appendChild(toastContainer);
+    }
+
+    const toastElement = document.createElement("div");
+    toastElement.innerHTML = toastHtml;
+    toastContainer.appendChild(toastElement.firstElementChild);
+
+    const toast = new bootstrap.Toast(toastContainer.lastElementChild);
+    toast.show();
+
+    setTimeout(() => {
+      if (toastContainer.lastElementChild) {
+        toastContainer.removeChild(toastContainer.lastElementChild);
+      }
+    }, 5000);
+  }
+
+  // Auto-save functionality and offline support
+  let isOnline = navigator.onLine;
+  let pendingSaves = [];
+
+  // Check connection status
+  window.addEventListener("online", function () {
+    isOnline = true;
+    showToast("Connection restored. Syncing data...", "success");
+    syncPendingData();
+  });
+
+  window.addEventListener("offline", function () {
+    isOnline = false;
+    showToast(
+      "Working offline. Changes will sync when connection is restored.",
+      "warning"
+    );
+  });
+
+  // Sync pending data when back online
+  function syncPendingData() {
+    if (pendingSaves.length > 0) {
+      pendingSaves.forEach((saveData) => {
+        fetch("/api/bulk_attendance", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(saveData),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              showToast("Offline data synced successfully", "success");
+            }
+          })
+          .catch((error) => {
+            console.error("Error syncing offline data:", error);
+          });
+      });
+      pendingSaves = [];
+    }
+  }
+
+  // Auto-save functionality (every 2 minutes)
+  setInterval(() => {
+    if (Object.keys(attendanceData).length > 0) {
+      console.log("Auto-saving attendance data...");
+      // Store in localStorage as backup
+      localStorage.setItem(
+        "attendanceBackup",
+        JSON.stringify({
+          data: attendanceData,
+          timestamp: new Date().toISOString(),
+        })
+      );
+    }
+  }, 120000);
+
+  // Restore from localStorage on page load
+  document.addEventListener("DOMContentLoaded", function () {
+    const backup = localStorage.getItem("attendanceBackup");
+    if (backup) {
+      try {
+        const backupData = JSON.parse(backup);
+        const backupTime = new Date(backupData.timestamp);
+        const now = new Date();
+        const timeDiff = (now - backupTime) / (1000 * 60); // minutes
+
+        if (timeDiff < 60) {
+          // Only restore if less than 1 hour old
+          if (
+            confirm(
+              "Found unsaved attendance data from " +
+                backupTime.toLocaleTimeString() +
+                ". Restore it?"
+            )
+          ) {
+            attendanceData = backupData.data;
+            // Update UI for restored data
+            Object.keys(attendanceData).forEach((studentId) => {
+              const status = attendanceData[studentId];
+              const statusElement = document.getElementById(
+                `status-${studentId}`
+              );
+              if (statusElement) {
+                const badgeClass =
+                  status === "present"
+                    ? "success"
+                    : status === "absent"
+                    ? "danger"
+                    : "warning";
+                statusElement.innerHTML = `<span class="badge bg-${badgeClass}">${
+                  status.charAt(0).toUpperCase() + status.slice(1)
+                }</span>`;
+              }
+            });
+            updateAttendanceCounter();
+            showToast("Attendance data restored from backup", "success");
+          }
+        }
+      } catch (e) {
+        console.error("Error restoring backup:", e);
+      }
+    }
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener("keydown", function (event) {
+    if (event.ctrlKey) {
+      switch (event.key) {
+        case "s":
+          event.preventDefault();
+          showSaveModal();
+          break;
+        case "a":
+          event.preventDefault();
+          document.getElementById("selectAll").click();
+          break;
+      }
+    }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Face Attendance System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card">
+            <div class="card-body p-5">
+                <div class="text-center mb-4">
+                    <div class="card-header bg-gradient text-white text-center py-4">
+                        <i class="fas fa-users fa-2x mb-2"></i>
+                        <h3 class="mb-0">Faculty Login</h3>
+                        <p class="mb-0 small">Face Attendance System</p>
+                    </div>
+                </div>
+
+                <form method="POST" action="{{ url_for('login') }}">
+                    <div class="mb-3">
+                        <label for="faculty_id" class="form-label">
+                            <i class="fas fa-id-card me-2"></i>Faculty ID
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="faculty_id" 
+                               name="faculty_id" 
+                               placeholder="Enter your faculty ID"
+                               required 
+                               autofocus>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="password" class="form-label">
+                            <i class="fas fa-lock me-2"></i>Password
+                        </label>
+                        <div class="input-group">
+                            <input type="password" 
+                                   class="form-control" 
+                                   id="password" 
+                                   name="password" 
+                                   placeholder="Enter your password"
+                                   required>
+                            <button class="btn btn-outline-secondary" 
+                                    type="button" 
+                                    id="togglePassword"
+                                    onclick="togglePasswordVisibility()">
+                                <i class="fas fa-eye" id="toggleIcon"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="remember_me" name="remember_me">
+                        <label class="form-check-label" for="remember_me">
+                            Remember me
+                        </label>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                        </button>
+                    </div>
+                </form>
+
+                <div class="text-center mt-4">
+                    <small class="text-muted">
+                        Default login: <strong>admin</strong> / <strong>admin123</strong>
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Information Card -->
+        <div class="card mt-4">
+            <div class="card-body text-center">
+                <h6 class="card-title">
+                    <i class="fas fa-info-circle me-2"></i>System Information
+                </h6>
+                <div class="row text-center">
+                    <div class="col-6">
+                        <small class="text-muted d-block">Students</small>
+                        <span class="badge bg-primary" id="studentCount">0</span>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Status</small>
+                        <span class="badge bg-success">
+                            <i class="fas fa-circle me-1"></i>Online
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.bg-gradient {
+    background: linear-gradient(135deg, #4e73df 0%, #36b9cc 100%);
+}
+.card {
+    border: none;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function togglePasswordVisibility() {
+    const passwordField = document.getElementById('password');
+    const toggleIcon = document.getElementById('toggleIcon');
+    
+    if (passwordField.type === 'password') {
+        passwordField.type = 'text';
+        toggleIcon.classList.remove('fa-eye');
+        toggleIcon.classList.add('fa-eye-slash');
+    } else {
+        passwordField.type = 'password';
+        toggleIcon.classList.remove('fa-eye-slash');
+        toggleIcon.classList.add('fa-eye');
+    }
+}
+
+// Load student count on page load
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/api/stats')
+        .then(response => response.json())
+        .then(data => {
+            if (data.total_students !== undefined) {
+                document.getElementById('studentCount').textContent = data.total_students;
+            }
+        })
+        .catch(error => {
+            console.log('Could not load stats:', error);
+        });
+});
+
+// Add enter key support
+document.addEventListener('keypress', function(event) {
+    if (event.key === 'Enter') {
+        const form = document.querySelector('form');
+        if (form) {
+            form.submit();
+        }
+    }
+});
+</script>
+{% endblock %}

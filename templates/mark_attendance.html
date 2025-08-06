@@ -1,0 +1,680 @@
+{% extends "base.html" %}
+
+{% block title %}Mark Attendance - Attendance Management System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2><i class="fas fa-user-check me-2"></i>Mark Individual Attendance</h2>
+                <p class="text-muted">Quick attendance marking for individual students</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('manual_attendance') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-list me-2"></i>Bulk Attendance
+                </a>
+                <button class="btn btn-outline-secondary" onclick="clearForm()">
+                    <i class="fas fa-undo me-2"></i>Clear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Mark Section -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-search me-2"></i>Find Student
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label for="student_search" class="form-label">Search Student</label>
+                        <input type="text" 
+                               class="form-control form-control-lg" 
+                               id="student_search" 
+                               placeholder="Enter student ID or name..."
+                               autofocus
+                               onkeyup="searchStudents()"
+                               onkeypress="handleEnterKey(event)">
+                        <div class="form-text">Type student ID or name to search</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="attendance_date" class="form-label">Date</label>
+                        <input type="date" 
+                               class="form-control form-control-lg" 
+                               id="attendance_date" 
+                               value="{{ today_date }}"
+                               max="{{ today_date }}">
+                    </div>
+                </div>
+
+                <!-- Search Results -->
+                <div id="searchResults" class="mt-3" style="display: none;">
+                    <h6>Search Results:</h6>
+                    <div id="studentsList" class="list-group">
+                        <!-- Results will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Today's Summary -->
+    <div class="col-md-4">
+        <div class="card bg-gradient-primary text-white">
+            <div class="card-body text-center">
+                <h6 class="card-title">Today's Status</h6>
+                <div class="row">
+                    <div class="col-4">
+                        <div class="h4 mb-0" id="todayPresent">{{ today_stats.present }}</div>
+                        <small>Present</small>
+                    </div>
+                    <div class="col-4">
+                        <div class="h4 mb-0" id="todayAbsent">{{ today_stats.absent }}</div>
+                        <small>Absent</small>
+                    </div>
+                    <div class="col-4">
+                        <div class="h4 mb-0" id="todayLate">{{ today_stats.late }}</div>
+                        <small>Late</small>
+                    </div>
+                </div>
+                <hr class="my-3">
+                <div class="row">
+                    <div class="col-6">
+                        <div class="h5 mb-0" id="todayTotal">{{ today_stats.total }}</div>
+                        <small>Total Students</small>
+                    </div>
+                    <div class="col-6">
+                        <div class="h5 mb-0" id="attendanceRate">{{ "%.1f"|format(today_stats.percentage) }}%</div>
+                        <small>Attendance Rate</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Selected Student Card -->
+<div class="row mb-4" id="selectedStudentCard" style="display: none;">
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-user me-2"></i>Selected Student
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center">
+                            <div class="avatar-circle me-3" id="studentAvatar">
+                                <!-- Student initial will be here -->
+                            </div>
+                            <div>
+                                <h5 class="mb-0" id="selectedStudentName">Student Name</h5>
+                                <p class="text-muted mb-0">
+                                    <span class="badge bg-secondary me-2" id="selectedStudentId">ID</span>
+                                    <span id="selectedStudentDept">Department</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="border-end">
+                                    <div class="h6 mb-0" id="studentAttendanceRate">0%</div>
+                                    <small class="text-muted">Attendance Rate</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="h6 mb-0" id="studentCurrentStatus">
+                                    <span class="badge bg-secondary">Not Marked</span>
+                                </div>
+                                <small class="text-muted">Today's Status</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Attendance Actions -->
+<div class="row mb-4" id="attendanceActions" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-check-square me-2"></i>Mark Attendance
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <button type="button" 
+                                class="btn btn-success btn-lg w-100 attendance-btn" 
+                                onclick="markAttendance('present')"
+                                data-status="present">
+                            <i class="fas fa-check fa-2x mb-2"></i>
+                            <div>Mark Present</div>
+                            <small>Student is here</small>
+                        </button>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="button" 
+                                class="btn btn-danger btn-lg w-100 attendance-btn" 
+                                onclick="markAttendance('absent')"
+                                data-status="absent">
+                            <i class="fas fa-times fa-2x mb-2"></i>
+                            <div>Mark Absent</div>
+                            <small>Student is not here</small>
+                        </button>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="button" 
+                                class="btn btn-warning btn-lg w-100 attendance-btn" 
+                                onclick="markAttendance('late')"
+                                data-status="late">
+                            <i class="fas fa-clock fa-2x mb-2"></i>
+                            <div>Mark Late</div>
+                            <small>Student arrived late</small>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Notes Section -->
+                <div class="mt-3">
+                    <label for="attendanceNotes" class="form-label">Notes (Optional)</label>
+                    <textarea class="form-control" 
+                              id="attendanceNotes" 
+                              rows="2" 
+                              placeholder="Add any additional notes about this attendance record..."></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>Recent Activity
+                </h5>
+                <span class="badge bg-primary" id="activityCount">{{ recent_activity|length }}</span>
+            </div>
+            <div class="card-body">
+                <div id="recentActivityList">
+                    {% if recent_activity %}
+                        {% for activity in recent_activity %}
+                        <div class="d-flex align-items-center mb-3 p-2 bg-light rounded activity-item">
+                            <div class="avatar-circle-sm me-2 bg-{{ 'success' if activity.status == 'present' else 'danger' if activity.status == 'absent' else 'warning' }}">
+                                <i class="fas fa-{{ 'check' if activity.status == 'present' else 'times' if activity.status == 'absent' else 'clock' }}"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="fw-bold">{{ activity.student_name }}</div>
+                                <small class="text-muted">
+                                    {{ activity.student_id }} • {{ activity.status|title }}
+                                    {% if activity.notes %}
+                                        • {{ activity.notes[:30] }}...
+                                    {% endif %}
+                                </small>
+                            </div>
+                            <div class="text-muted">
+                                <small>{{ activity.timestamp.strftime('%I:%M %p') }}</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-inbox fa-2x mb-2"></i>
+                            <p>No recent activity</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>Quick Statistics
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <div class="text-center p-3 bg-success bg-opacity-10 rounded">
+                            <div class="h4 text-success mb-0">{{ quick_stats.perfect_attendance }}</div>
+                            <small class="text-muted">Perfect Attendance</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center p-3 bg-warning bg-opacity-10 rounded">
+                            <div class="h4 text-warning mb-0">{{ quick_stats.need_attention }}</div>
+                            <small class="text-muted">Need Attention</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-6">
+                        <div class="text-center p-3 bg-info bg-opacity-10 rounded">
+                            <div class="h4 text-info mb-0">{{ quick_stats.avg_daily_attendance }}%</div>
+                            <small class="text-muted">Avg Daily Rate</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center p-3 bg-primary bg-opacity-10 rounded">
+                            <div class="h4 text-primary mb-0">{{ quick_stats.days_active }}</div>
+                            <small class="text-muted">Days Active</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="mt-3">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('manual_attendance') }}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-list me-1"></i>Bulk Attendance
+                        </a>
+                        <a href="{{ url_for('reports') }}" class="btn btn-outline-info btn-sm">
+                            <i class="fas fa-chart-line me-1"></i>View Reports
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div class="modal fade" id="successModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                <h5>Attendance Marked!</h5>
+                <p class="mb-0" id="successMessage">Student attendance has been recorded successfully.</p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="resetForm()">
+                    Continue
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.avatar-circle {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 24px;
+}
+
+.avatar-circle-sm {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 12px;
+}
+
+.attendance-btn {
+    min-height: 120px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.attendance-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+}
+
+.attendance-btn.selected {
+    border: 3px solid #fff;
+    box-shadow: 0 0 20px rgba(0,0,0,0.3);
+}
+
+.student-item {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.student-item:hover {
+    background-color: #f8f9fa;
+    transform: translateX(5px);
+}
+
+.activity-item {
+    transition: all 0.2s ease;
+}
+
+.activity-item:hover {
+    background-color: #e9ecef !important;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.pulse {
+    animation: pulse 0.5s ease-in-out;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let selectedStudent = null;
+let studentsData = [];
+
+// Search students
+function searchStudents() {
+    const searchTerm = document.getElementById('student_search').value.trim().toLowerCase();
+    const resultsDiv = document.getElementById('searchResults');
+    const listDiv = document.getElementById('studentsList');
+    
+    if (searchTerm.length < 2) {
+        resultsDiv.style.display = 'none';
+        return;
+    }
+    
+    // Fetch students (this would normally be an API call)
+    fetch(`/api/search_students?q=${encodeURIComponent(searchTerm)}`)
+        .then(response => response.json())
+        .then(data => {
+            studentsData = data.students || [];
+            displaySearchResults(studentsData);
+        })
+        .catch(error => {
+            console.error('Error searching students:', error);
+        });
+}
+
+function displaySearchResults(students) {
+    const resultsDiv = document.getElementById('searchResults');
+    const listDiv = document.getElementById('studentsList');
+    
+    if (students.length === 0) {
+        listDiv.innerHTML = '<div class="list-group-item text-muted">No students found</div>';
+    } else {
+        listDiv.innerHTML = students.map(student => `
+            <div class="list-group-item list-group-item-action student-item" 
+                 onclick="selectStudent('${student.student_id}')">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">${student.name}</h6>
+                        <small class="text-muted">
+                            ${student.student_id} • ${student.department || 'No Department'}
+                        </small>
+                    </div>
+                    <div>
+                        ${student.attendance_status ? 
+                            `<span class="badge bg-${student.attendance_status === 'present' ? 'success' : 
+                                                      student.attendance_status === 'absent' ? 'danger' : 'warning'}">
+                                ${student.attendance_status}
+                             </span>` : 
+                            '<span class="badge bg-secondary">Not Marked</span>'
+                        }
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    resultsDiv.style.display = 'block';
+}
+
+function selectStudent(studentId) {
+    const student = studentsData.find(s => s.student_id === studentId);
+    if (!student) return;
+    
+    selectedStudent = student;
+    
+    // Update selected student card
+    document.getElementById('selectedStudentName').textContent = student.name;
+    document.getElementById('selectedStudentId').textContent = student.student_id;
+    document.getElementById('selectedStudentDept').textContent = student.department || 'No Department';
+    document.getElementById('studentAvatar').textContent = student.name.charAt(0).toUpperCase();
+    document.getElementById('studentAttendanceRate').textContent = `${student.attendance_rate || 0}%`;
+    
+    // Update current status
+    const statusBadge = document.getElementById('studentCurrentStatus');
+    if (student.attendance_status) {
+        const badgeClass = student.attendance_status === 'present' ? 'success' : 
+                          student.attendance_status === 'absent' ? 'danger' : 'warning';
+        statusBadge.innerHTML = `<span class="badge bg-${badgeClass}">${student.attendance_status}</span>`;
+    } else {
+        statusBadge.innerHTML = '<span class="badge bg-secondary">Not Marked</span>';
+    }
+    
+    // Show cards
+    document.getElementById('selectedStudentCard').style.display = 'block';
+    document.getElementById('attendanceActions').style.display = 'block';
+    document.getElementById('searchResults').style.display = 'none';
+    
+    // Clear search
+    document.getElementById('student_search').value = '';
+    
+    // Add visual feedback
+    document.getElementById('selectedStudentCard').classList.add('pulse');
+    setTimeout(() => {
+        document.getElementById('selectedStudentCard').classList.remove('pulse');
+    }, 500);
+}
+
+function markAttendance(status) {
+    if (!selectedStudent) {
+        alert('Please select a student first');
+        return;
+    }
+    
+    const attendanceDate = document.getElementById('attendance_date').value;
+    const notes = document.getElementById('attendanceNotes').value.trim();
+    
+    // Visual feedback
+    const buttons = document.querySelectorAll('.attendance-btn');
+    buttons.forEach(btn => btn.classList.remove('selected'));
+    document.querySelector(`[data-status="${status}"]`).classList.add('selected');
+    
+    // Prepare data
+    const attendanceData = {
+        student_id: selectedStudent.student_id,
+        status: status,
+        date: attendanceDate,
+        notes: notes,
+        method: 'manual_individual'
+    };
+    
+    // Show loading
+    const submitButton = document.querySelector(`[data-status="${status}"]`);
+    const originalContent = submitButton.innerHTML;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin fa-2x mb-2"></i><div>Saving...</div>';
+    submitButton.disabled = true;
+    
+    // Submit attendance
+    fetch('/api/mark_individual_attendance', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(attendanceData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update UI
+            updateTodayStats();
+            addToRecentActivity(selectedStudent, status, notes);
+            
+            // Show success message
+            document.getElementById('successMessage').textContent = 
+                `${selectedStudent.name} marked as ${status} successfully!`;
+            const modal = new bootstrap.Modal(document.getElementById('successModal'));
+            modal.show();
+        } else {
+            throw new Error(data.message || 'Failed to mark attendance');
+        }
+    })
+    .catch(error => {
+        console.error('Error marking attendance:', error);
+        alert('Error marking attendance: ' + error.message);
+    })
+    .finally(() => {
+        // Restore button
+        submitButton.innerHTML = originalContent;
+        submitButton.disabled = false;
+    });
+}
+
+function updateTodayStats() {
+    fetch('/api/today_stats')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('todayPresent').textContent = data.present;
+            document.getElementById('todayAbsent').textContent = data.absent;
+            document.getElementById('todayLate').textContent = data.late;
+            document.getElementById('todayTotal').textContent = data.total;
+            document.getElementById('attendanceRate').textContent = `${data.percentage.toFixed(1)}%`;
+        })
+        .catch(error => {
+            console.error('Error updating stats:', error);
+        });
+}
+
+function addToRecentActivity(student, status, notes) {
+    const activityList = document.getElementById('recentActivityList');
+    const activityCount = document.getElementById('activityCount');
+    
+    // Create new activity item
+    const activityItem = document.createElement('div');
+    activityItem.className = 'd-flex align-items-center mb-3 p-2 bg-light rounded activity-item';
+    activityItem.innerHTML = `
+        <div class="avatar-circle-sm me-2 bg-${status === 'present' ? 'success' : status === 'absent' ? 'danger' : 'warning'}">
+            <i class="fas fa-${status === 'present' ? 'check' : status === 'absent' ? 'times' : 'clock'}"></i>
+        </div>
+        <div class="flex-grow-1">
+            <div class="fw-bold">${student.name}</div>
+            <small class="text-muted">
+                ${student.student_id} • ${status.charAt(0).toUpperCase() + status.slice(1)}
+                ${notes ? ` • ${notes.substring(0, 30)}...` : ''}
+            </small>
+        </div>
+        <div class="text-muted">
+            <small>Just now</small>
+        </div>
+    `;
+    
+    // Add to top of list
+    if (activityList.firstChild) {
+        activityList.insertBefore(activityItem, activityList.firstChild);
+    } else {
+        activityList.innerHTML = '';
+        activityList.appendChild(activityItem);
+    }
+    
+    // Update count
+    const currentCount = parseInt(activityCount.textContent) || 0;
+    activityCount.textContent = currentCount + 1;
+    
+    // Remove oldest items if more than 10
+    const items = activityList.children;
+    if (items.length > 10) {
+        for (let i = items.length - 1; i >= 10; i--) {
+            items[i].remove();
+        }
+    }
+}
+
+function resetForm() {
+    selectedStudent = null;
+    document.getElementById('selectedStudentCard').style.display = 'none';
+    document.getElementById('attendanceActions').style.display = 'none';
+    document.getElementById('searchResults').style.display = 'none';
+    document.getElementById('student_search').value = '';
+    document.getElementById('attendanceNotes').value = '';
+    document.getElementById('student_search').focus();
+    
+    // Remove button selections
+    document.querySelectorAll('.attendance-btn').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+}
+
+function clearForm() {
+    if (confirm('Clear the current form?')) {
+        resetForm();
+    }
+}
+
+function handleEnterKey(event) {
+    if (event.key === 'Enter') {
+        const results = document.querySelectorAll('.student-item');
+        if (results.length === 1) {
+            results[0].click();
+        }
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('student_search').focus();
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(event) {
+    if (selectedStudent && event.ctrlKey) {
+        switch(event.key) {
+            case '1':
+                event.preventDefault();
+                markAttendance('present');
+                break;
+            case '2':
+                event.preventDefault();
+                markAttendance('absent');
+                break;
+            case '3':
+                event.preventDefault();
+                markAttendance('late');
+                break;
+        }
+    } else if (event.key === 'Escape') {
+        resetForm();
+    }
+});
+</script>
+{% endblock %}
