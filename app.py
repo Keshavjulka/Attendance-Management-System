@@ -13,16 +13,23 @@ import pandas as pd
 from openpyxl import Workbook
 from io import BytesIO
 import hashlib
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:3000", "http://127.0.0.1:5173", "http://127.0.0.1:5174", "http://localhost:5001", "http://127.0.0.1:5001"])
 
-# JWT Configuration
-app.config['JWT_SECRET_KEY'] = 'your-secret-key-change-in-production'  # Change this in production!
+# JWT Configuration - Use environment variable
+app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'fallback-secret-key-change-immediately')
 jwt = JWTManager(app)
 
-# MongoDB connection
-MONGO_URI = "mongodb+srv://flask_user:keshavjulka%40123@flask-cluster.rstc7gw.mongodb.net/attendance_system?retryWrites=true&w=majority&appName=flask-cluster"
+# MongoDB connection - Use environment variable
+MONGO_URI = os.getenv('MONGO_URI')
+if not MONGO_URI:
+    raise ValueError("MONGO_URI environment variable is required. Please check your .env file.")
+
 client = MongoClient(MONGO_URI)
 db = client['attendance_system']
 students_col = db['students']
